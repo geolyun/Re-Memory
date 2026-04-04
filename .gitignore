@@ -1,8 +1,33 @@
+# 환경변수 (절대 커밋 금지)
 .env
+
+# Python
 __pycache__/
 *.pyc
 *.egg-info/
 dist/
 build/
 .venv/
+venv/
+
+# 데이터베이스
+*.db
+
+# 사용자 업로드 & 자동 생성 샘플 이미지
+rememory/uploads/
+rememory/data/sample_photos/
 examples/sample_photo.jpg
+
+# Node.js
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# IDE / 도구
+.claude/
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

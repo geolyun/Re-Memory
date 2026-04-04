@@ -1,0 +1,29 @@
+# 데이터베이스
+*.db
+*.db-shm
+*.db-wal
+rememory.db
+memorybook.db
+
+# 환경변수 (API Key 포함)
+.env
+
+# 업로드 사진 (개인 정보) — .gitkeep은 추적
+uploads/*
+!uploads/.gitkeep
+
+# Python 캐시
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# 가상환경
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
