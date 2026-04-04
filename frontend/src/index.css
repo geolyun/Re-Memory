@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface-warm text-slate-800 font-sans antialiased overflow-x-hidden;
+    background: radial-gradient(circle at 10% 40%, rgba(244, 63, 94, 0.05), transparent 40%),
+      radial-gradient(circle at 90% 60%, rgba(251, 146, 60, 0.04), transparent 40%),
+      #FDFBF7;
+    background-attachment: fixed;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-surface-card backdrop-blur-2xl border border-white/60 shadow-xl rounded-3xl transition-all duration-300;
+  }
+
+  .glass-input {
+    @apply w-full bg-white/60 border border-slate-200/50 rounded-2xl px-5 py-4 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:bg-white transition-all duration-300 shadow-inner;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-400 hover:to-primary-500 text-white font-bold py-4 px-8 rounded-2xl shadow-xl shadow-primary-500/30 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5 flex justify-center items-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply bg-white hover:bg-slate-50 text-slate-700 font-bold py-4 px-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 flex justify-center items-center gap-2 transform hover:-translate-y-0.5;
+  }
+
+  .book-cover {
+    @apply relative overflow-hidden bg-[#fafafa] text-[#1a1a1a] shadow-2xl rounded-r-lg rounded-l-sm border-l-[16px] border-[#f43f5e];
+  }
+
+  .book-cover::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 2rem;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.05), transparent);
+    z-index: 20;
+    pointer-events: none;
+  }
+}
