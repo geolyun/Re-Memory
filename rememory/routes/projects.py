@@ -297,10 +297,51 @@ def get_project_detail(project_id: int, request: Request, db: Session = Depends(
             "cover_image_url": project.cover_image_url,
             "share_token": project.share_token,
         },
-        "chapters": [{"id": c.id, "title": c.title, "order_index": c.order_index} for c in chapters],
+        "chapters": [{"id": c.id, "title": c.title, "order_index": c.order_index,
+                      "use_ganji": c.use_ganji, "ganji_tpl_uid": c.ganji_tpl_uid} for c in chapters],
         "qnas": qnas,
         "cover_photo": {"url": cover_photo.image_url} if cover_photo else None,
     })
+
+
+# ── 간지 템플릿 목록 ────────────────────────────────────────────────
+
+@router.get("/ganji-templates")
+def get_ganji_templates():
+    """사용 가능한 간지 템플릿 목록 반환."""
+    return JSONResponse(config.GANJI_TEMPLATES)
+
+
+# ── 챕터 간지 설정 업데이트 ─────────────────────────────────────────
+
+@router.patch("/projects/{project_id}/chapters/{chapter_id}/ganji")
+def update_chapter_ganji(
+    project_id: int,
+    chapter_id: int,
+    request: Request,
+    use_ganji: bool = Form(True),
+    ganji_tpl_uid: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    """챕터별 간지 포함 여부 및 템플릿 설정."""
+    user = get_or_create_user(request, db)
+    chapter = (
+        db.query(models.Chapter)
+        .join(models.Project)
+        .filter(
+            models.Chapter.id == chapter_id,
+            models.Project.id == project_id,
+            models.Project.user_id == user.id,
+        )
+        .first()
+    )
+    if not chapter:
+        raise HTTPException(status_code=404, detail="챕터를 찾을 수 없습니다.")
+
+    chapter.use_ganji = use_ganji
+    chapter.ganji_tpl_uid = ganji_tpl_uid.strip() or None
+    db.commit()
+    return JSONResponse({"ok": True})
 
 
 # ── 공동 작성: 공유 토큰 생성 ───────────────────────────────────────

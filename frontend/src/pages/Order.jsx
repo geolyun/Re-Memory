@@ -92,6 +92,14 @@ export default function Order() {
             </p>
             <div className="flex flex-col gap-5">
               <div className="flex justify-between text-lg items-center">
+                <span className="text-slate-600 font-bold">예상 책 페이지 수</span>
+                <span className="font-extrabold text-xl text-slate-800">
+                  {(project?.page_count ?? estimate?.pageCount) != null
+                    ? `${project.page_count ?? estimate.pageCount}p`
+                    : '--'}
+                </span>
+              </div>
+              <div className="flex justify-between text-lg items-center">
                 <span className="text-slate-600 font-bold">상품 기본 금액</span>
                 <span className="font-extrabold text-xl text-slate-800">{fmt(estimate?.productsPrice)}</span>
               </div>
@@ -99,12 +107,6 @@ export default function Order() {
                 <span className="text-slate-600 font-bold">배송비</span>
                 <span className="font-extrabold text-xl text-slate-800">{fmt(estimate?.deliveryFee)}</span>
               </div>
-              {estimate?.pageCount ? (
-                <div className="flex justify-between text-sm mt-3 pt-5 border-t border-slate-200">
-                  <span className="text-slate-400 font-bold">예상 페이지 수</span>
-                  <span className="text-primary-700 font-bold bg-primary-50 border border-primary-100 px-3 py-1 rounded-lg">{estimate.pageCount}p</span>
-                </div>
-              ) : null}
             </div>
             <div className="h-px border-b-2 border-dashed border-slate-200 w-full my-8" />
             <div className="flex justify-between items-center bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm">

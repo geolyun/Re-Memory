@@ -35,6 +35,14 @@ def run_migrations():
         if "share_token" not in project_columns:
             conn.execute(text("ALTER TABLE projects ADD COLUMN share_token VARCHAR"))
 
+        # chapters 테이블 마이그레이션
+        result = conn.execute(text("PRAGMA table_info(chapters)"))
+        chapter_columns = [row[1] for row in result]
+        if "use_ganji" not in chapter_columns:
+            conn.execute(text("ALTER TABLE chapters ADD COLUMN use_ganji BOOLEAN NOT NULL DEFAULT 1"))
+        if "ganji_tpl_uid" not in chapter_columns:
+            conn.execute(text("ALTER TABLE chapters ADD COLUMN ganji_tpl_uid VARCHAR"))
+
         conn.commit()
 
 
