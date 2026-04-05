@@ -28,13 +28,19 @@ def create_book(title: str) -> str:
         title=title,
         creation_type="TEST",
     )
-    return result["data"]["bookUid"]
+    try:
+        return result["data"]["bookUid"]
+    except (KeyError, TypeError) as e:
+        raise RuntimeError(f"책 생성 응답 파싱 오류: {e} / 응답: {result}") from e
 
 
 def upload_photo(book_uid: str, file_path: str) -> str:
     client = get_client()
     result = client.photos.upload(book_uid, file_path)
-    return result["data"]["fileName"]
+    try:
+        return result["data"]["fileName"]
+    except (KeyError, TypeError) as e:
+        raise RuntimeError(f"사진 업로드 응답 파싱 오류: {e} / 응답: {result}") from e
 
 
 def _season_title(month: int) -> str:
@@ -158,7 +164,12 @@ def finalize_book(book_uid: str, max_retries: int = 5) -> dict:
             result = client.books.finalize(book_uid)
             return result.get("data", {})
         except ApiError as e:
-            if "최소 페이지" in str(e.details) and attempt < max_retries - 1:
+            is_page_error = (
+                e.status_code == 400
+                or "최소 페이지" in str(e.details)
+                or "minimum" in str(e.details).lower()
+            )
+            if is_page_error and attempt < max_retries - 1:
                 for _ in range(4):
                     insert_blank(book_uid)
             else:

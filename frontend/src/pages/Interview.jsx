@@ -96,8 +96,13 @@ export default function Interview() {
 
   const handleShare = async () => {
     if (!shareToken) {
-      const { share_token } = await api.createShareToken(id)
-      setShareToken(share_token)
+      try {
+        const { share_token } = await api.createShareToken(id)
+        setShareToken(share_token)
+      } catch (e) {
+        setError(`공유 링크 생성 실패: ${e.message}`)
+        return
+      }
     }
     setShowSharePanel(p => !p)
   }

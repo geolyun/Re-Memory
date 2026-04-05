@@ -4,6 +4,8 @@ import { BookOpen, Edit2, CheckCircle, Loader2, Clock, Settings2, ChevronDown } 
 import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '../lib/api'
 
+const MIN_PAGES = 24
+
 function getEmoji(rel) {
   if (rel === '아버지') return '👨'
   if (rel === '어머니') return '👩'
@@ -14,7 +16,7 @@ function getEmoji(rel) {
   return '📖'
 }
 
-function ChapterGanjiSettings({ projectId, chapter, ganjiTemplates, onChange, qnaCount }) {
+function ChapterGanjiSettings({ projectId, chapter, ganjiTemplates, onChange }) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -90,16 +92,13 @@ function ChapterGanjiSettings({ projectId, chapter, ganjiTemplates, onChange, qn
               )}
             </div>
 
-            <div className="mt-3 flex items-center gap-3">
-              <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
-                이 챕터: {chapter.use_ganji ? qnaCount + 2 : qnaCount}p
-              </span>
+            <p className="text-xs mt-3 font-medium">
               {chapter.use_ganji ? (
-                <span className="text-xs text-slate-400">간지 페이지 2p 포함</span>
+                <span className="text-slate-400">간지 포함 시 +2p</span>
               ) : (
-                <span className="text-xs text-amber-600 font-medium">간지 생략 시 −2p</span>
+                <span className="text-amber-600">간지 생략 시 −2p</span>
               )}
-            </div>
+            </p>
             <p className="text-xs text-slate-400 mt-2">
               변경사항은 다음 미리보기 생성 시 반영됩니다.
             </p>
@@ -118,23 +117,30 @@ export default function Preview() {
   const [chapters, setChapters] = useState([])
   const [qnas, setQnas] = useState([])
   const [ganjiTemplates, setGanjiTemplates] = useState([])
+  const [estimate, setEstimate] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [loadingStep, setLoadingStep] = useState('')
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [ganjiDirty, setGanjiDirty] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     Promise.all([
       api.getProject(id),
       api.getGanjiTemplates(),
-    ]).then(([{ project, chapters, qnas }, templates]) => {
+      api.getEstimate(id).catch(() => null),
+    ]).then(([{ project, chapters, qnas }, templates, estimate]) => {
       setProject(project)
       setChapters(chapters)
       setQnas(qnas)
       setGanjiTemplates(templates)
+      setEstimate(estimate)
     }).catch(() => navigate('/'))
   }, [id, navigate])
 
   const handleChapterGanjiChange = useCallback((chapterId, patch) => {
     setChapters(prev => prev.map(c => c.id === chapterId ? { ...c, ...patch } : c))
+    setGanjiDirty(true)
   }, [])
 
   const handleRebuild = async () => {
@@ -149,8 +155,27 @@ export default function Preview() {
     setLoading(true); setError('')
     try {
       await api.finalizeBook(id)
+      setConfirmOpen(false)
       navigate(`/projects/${id}/order`)
     } catch (err) { setError(err.message); setLoading(false) }
+  }
+
+  const handleRebuildAndFinalize = async () => {
+    setLoading(true); setError('')
+    try {
+      setLoadingStep('미리보기 재생성 중...')
+      await api.rebuildBook(id)
+      setLoadingStep('책 빌드 중...')
+      await api.buildBook(id)
+      setLoadingStep('확정 중...')
+      await api.finalizeBook(id)
+      setConfirmOpen(false)
+      navigate(`/projects/${id}/order`)
+    } catch (err) {
+      setError(err.message)
+      setLoadingStep('')
+      setLoading(false)
+    }
   }
 
   if (!project) return <div className="text-center py-32 text-slate-400 animate-pulse font-bold text-lg">기억을 엮는 중입니다...</div>
@@ -160,11 +185,15 @@ export default function Preview() {
   })).filter(c => c.qnas.length > 0)
   const hasAnswers = grouped.length > 0
 
-  const estimatedPages = (() => {
-    const ganjiPages = grouped.filter(c => c.use_ganji).length * 2
-    const qnaPages = grouped.reduce((sum, c) => sum + c.qnas.length, 0)
-    return ganjiPages + qnaPages + 1 + 2 // 내지 + 발행면 + 표지(앞뒤)
+  const fallbackPages = (() => {
+    if (!hasAnswers) return null
+    const contentPages =
+      grouped.filter(c => c.use_ganji).length * 2 +
+      grouped.reduce((sum, c) => sum + c.qnas.length, 0)
+    return Math.max(MIN_PAGES, contentPages + 1)
   })()
+
+  const estimatedPages = estimate?.pageCount ?? project.page_count ?? fallbackPages
 
   return (
     <div className="flex flex-col gap-10 max-w-5xl mx-auto w-full pb-12 mt-2">
@@ -175,16 +204,17 @@ export default function Preview() {
 
       {error && <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 text-red-600 shadow-sm font-semibold">⚠️ {error}</div>}
 
+      {hasAnswers && project.page_count != null && estimatedPages != null && project.page_count !== estimatedPages && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-amber-700 text-sm font-semibold flex items-center gap-2">
+          ⚠️ 마지막 빌드 이후 내용이 변경되었습니다. 확정 전에 <button onClick={handleRebuild} className="underline underline-offset-2 hover:text-amber-900">미리보기를 다시 생성</button>해주세요. (빌드 당시 {project.page_count}p → 현재 예상 {estimatedPages}p)
+        </div>
+      )}
+
       <div className="w-full grid md:grid-cols-[2fr_3fr] gap-12 items-start mt-6">
         {/* Cover 3D Preview */}
         <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }} className="w-full flex-col flex gap-5 mt-2 md:sticky md:top-8">
           <div className="flex items-center justify-between border-b border-slate-200 pb-3">
             <h3 className="text-xl font-bold text-slate-800">표지 디자인 Preview</h3>
-            {hasAnswers && (
-              <span className="text-sm font-bold bg-primary-50 text-primary-600 border border-primary-100 px-3 py-1 rounded-full">
-                예상 {estimatedPages}p
-              </span>
-            )}
           </div>
           <div className="book-cover w-full aspect-[3/4] flex flex-col items-center justify-center p-6 relative overflow-hidden group">
             <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/5 to-transparent z-10" />
@@ -254,7 +284,6 @@ export default function Preview() {
                   chapter={ch}
                   ganjiTemplates={ganjiTemplates}
                   onChange={handleChapterGanjiChange}
-                  qnaCount={ch.qnas.length}
                 />
               </div>
             ))}
@@ -262,14 +291,14 @@ export default function Preview() {
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-4 mt-8">
-            <Link to={`/projects/${id}/timeline`} className="btn-secondary flex-1 py-5 text-lg shadow-sm flex items-center justify-center gap-2">
-              <Clock className="w-5 h-5 text-slate-500" /> 타임라인 보기
+            <Link to={`/projects/${id}/timeline`} className="flex-1 py-3.5 px-4 rounded-2xl border border-slate-200 bg-white/75 text-sm font-semibold text-slate-600 shadow-sm hover:bg-white hover:border-slate-300 transition-all flex items-center justify-center gap-2">
+              <Clock className="w-4 h-4 text-slate-400" /> 타임라인 보기
             </Link>
-            <button onClick={handleRebuild} disabled={loading} className="btn-secondary flex-1 py-5 text-lg shadow-sm">
-              <Edit2 className="w-5 h-5 text-slate-500" /> 일부 수정하기
+            <button onClick={handleRebuild} disabled={loading} className="flex-1 py-3.5 px-4 rounded-2xl border border-slate-200 bg-white/75 text-sm font-semibold text-slate-600 shadow-sm hover:bg-white hover:border-slate-300 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+              <Edit2 className="w-4 h-4 text-slate-400" /> 일부 수정하기
             </button>
-            <button onClick={handleFinalize} disabled={loading || !hasAnswers} className="btn-primary flex-[1.5] py-5 text-lg group text-white shadow-lg shadow-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
-              {loading ? <><Loader2 className="w-6 h-6 animate-spin" /> 처리 중...</> : <><CheckCircle className="w-6 h-6 group-hover:scale-110 transition-transform" /> 이대로 책자 확정하기</>}
+            <button onClick={() => setConfirmOpen(true)} disabled={loading || !hasAnswers} className="btn-primary flex-[1.5] py-4 text-base font-semibold group text-white shadow-lg shadow-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
+              {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> 처리 중...</> : <><CheckCircle className="w-5 h-5 group-hover:scale-110 transition-transform" /> 이대로 책자 확정하기</>}
             </button>
           </div>
           <p className="text-center text-slate-500 text-sm mt-2 font-bold tracking-wide">
@@ -279,6 +308,66 @@ export default function Preview() {
           </p>
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {confirmOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-slate-950/35 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              className="w-full max-w-md rounded-3xl bg-white shadow-2xl border border-slate-200 p-6 md:p-7"
+            >
+              <div className="flex flex-col gap-3">
+                <h3 className="text-xl font-extrabold text-slate-800">이 책자를 지금 확정하시겠어요?</h3>
+                {ganjiDirty ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700 font-medium">
+                    간지 설정이 변경되었습니다. 변경사항을 책에 반영하려면 미리보기를 재생성해야 합니다.
+                  </div>
+                ) : (
+                  <p className="text-sm leading-relaxed text-slate-600">
+                    확정 후 발행 준비가 시작되면 문구와 사진을 다시 수정할 수 없습니다.
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-6 flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmOpen(false)}
+                  disabled={loading}
+                  className="btn-secondary w-full py-3.5 text-sm font-semibold shadow-sm"
+                >
+                  아니요, 다시 보기
+                </button>
+                {ganjiDirty && (
+                  <button
+                    type="button"
+                    onClick={handleRebuildAndFinalize}
+                    disabled={loading}
+                    className="btn-primary w-full py-3.5 text-sm font-semibold text-white disabled:opacity-50"
+                  >
+                    {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> {loadingStep}</> : <><CheckCircle className="w-4 h-4" /> 재생성 후 확정하기</>}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleFinalize}
+                  disabled={loading}
+                  className={`w-full py-3.5 text-sm font-semibold rounded-2xl disabled:opacity-50 ${ganjiDirty ? 'border border-slate-200 bg-white text-slate-500 hover:bg-slate-50' : 'btn-primary text-white'}`}
+                >
+                  {loading && !ganjiDirty ? <><Loader2 className="w-4 h-4 animate-spin" /> 확정 중...</> : ganjiDirty ? '변경 무시하고 확정' : <><CheckCircle className="w-4 h-4" /> 확정하기</>}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
