@@ -28,72 +28,114 @@
 | **인생 타임라인** | 답변에 인생 시기를 태깅하면 시간 순 타임라인으로 시각화 |
 | **공동 작성** | 공유 링크로 가족이 함께 답변 기여 (이름 표시) |
 | **주문·배송** | 배송지 입력 → 충전금 결제 → 실물 책 주문 |
+| **간지 커스터마이징** | 챕터별 간지 포함/제외 토글, 템플릿 선택, 챕터 페이지 수 실시간 표시 |
+| **예상 페이지 수** | 미리보기에서 간지 설정에 따라 전체 예상 페이지 수 실시간 계산 |
 | **충전금 관리** | 잔액 조회 및 Sandbox 테스트 충전 |
 
 ---
 
 ## 2. 실행 방법
 
-### 사전 요구사항
+> **필요한 것**: Python 3.11+, Node.js 20+, BookPrint API Sandbox Key
 
-- Python **3.10** 이상
-- Node.js **18** 이상
-- BookPrint API **Sandbox Key** (가입 후 발급)
-
-### 설치
-
-아래 명령어를 **순서대로** 복사·붙여넣기하면 바로 실행됩니다.
+**① 백엔드 패키지 설치 (루트)**
 
 ```bash
-# 1. 저장소 클론
-git clone https://github.com/YOUR_USERNAME/bookprintapi-python-sdk.git
-cd bookprintapi-python-sdk
-
-# 2. 가상환경 생성 및 활성화
-python -m venv .venv
-source .venv/bin/activate      # macOS / Linux
-# .venv\Scripts\activate       # Windows PowerShell
-
-# 3. Python 패키지 설치
 pip install -r requirements.txt
-
-# 4. 환경변수 파일 생성
-cp rememory/.env.example rememory/.env
 ```
 
-`rememory/.env` 파일을 열어 발급받은 API Key를 입력합니다:
+**② 환경변수 설정**
+
+`rememory/.env` 파일을 생성하고 API Key를 입력합니다:
 
 ```env
 BOOKPRINT_API_KEY=SBxxxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 BOOKPRINT_BASE_URL=https://api-sandbox.sweetbook.com/v1
 ```
 
-### 실행 (터미널 2개 필요)
+<details>
+<summary>템플릿 UID 및 추가 옵션 (파트너 포털에서 확인)</summary>
 
-**터미널 1 — FastAPI 백엔드 (포트 8000)**
+```env
+BOOK_SPEC_UID=SQUAREBOOK_HC
+TPL_COVER=79yjMH3qRPly
+TPL_GANJI=5M3oo7GlWKGO
+TPL_QNA=5B4ds6i0Rywx
+TPL_BLANK=2mi1ao0Z4Vxl
+TPL_PUBLISH=5nhOVBjTnIVE
+
+# 간지 템플릿 여러 개일 때 (미리보기에서 드롭다운 표시)
+# GANJI_TEMPLATE_OPTIONS=5M3oo7GlWKGO:클래식,AbCdEfGhIjKl:모던
+```
+</details>
+
+**③ 프론트엔드 패키지 설치**
 
 ```bash
-cd rememory
-python main.py
+cd frontend && npm install
 ```
 
-**터미널 2 — React 프론트엔드 (포트 5173)**
+**④ 실행 (터미널 2개)**
 
 ```bash
-cd frontend
-npm install
-npm run dev
+# 터미널 1 — 백엔드 (포트 8000)
+cd rememory && python main.py
+
+# 터미널 2 — 프론트엔드 (포트 5173)
+cd frontend && npm run dev
 ```
 
-브라우저에서 `http://localhost:5173` 으로 접속합니다.
+브라우저에서 `http://localhost:5173` 접속.
 
-> **Vite 개발 서버**가 `/api`, `/uploads`, `/data` 요청을 자동으로 백엔드(8000)로 프록시합니다.
->
-> **최초 실행 시** 샘플 프로젝트 2건이 자동 생성됩니다. 설치 직후 인터뷰 확인 → 타임라인 → 미리보기 → 주문 전체 흐름을 바로 체험할 수 있습니다.
+> 최초 실행 시 샘플 프로젝트 3건이 자동 생성됩니다. 설치 직후 인터뷰 → 타임라인 → 미리보기 → 주문 전체 흐름을 바로 체험할 수 있습니다.
 
 ---
 
-## 3. 사용한 API 목록
+## 3. 테스트
+
+### 백엔드 통합 테스트
+
+```bash
+pip install -r requirements-dev.txt
+pytest -q
+```
+
+BookPrint API와 빌드 파이프라인은 픽스처로 모킹되므로 **API 키 없이** 실행됩니다.
+
+| 테스트 | 검증 내용 |
+|--------|-----------|
+| `test_full_primary_user_journey` | 프로젝트 생성 → 답변 → 사진 → 공유 → 빌드 → 확정 → 주문 → 취소 → 삭제 전체 플로우 |
+| `test_build_requires_at_least_one_answer_and_supports_rebuild` | 답변 없는 빌드 차단, 재빌드 후 `book_uid` 리셋 검증 |
+| `test_uploaded_photo_is_removed_when_deleted` | 사진 삭제 시 파일시스템·DB 동시 삭제 |
+| `test_remaining_api_endpoints_and_representative_errors` | 간지 설정, 크레딧, 권한 오류, 상태 전이 오류, 사진 5장 초과 등 |
+
+### 프론트엔드 테스트
+
+```bash
+cd frontend
+
+# 단위 테스트만
+npm run test:unit
+
+# CI 전체 (빌드 검증 → 단위 → E2E)
+npm run test:ci
+```
+
+`test:ci` 순서: `vite build` → `vitest run` → `playwright test` (빌드된 결과물로 E2E 실행)
+
+### CI (GitHub Actions)
+
+`main`/`master` 브랜치 push 및 PR 시 자동 실행:
+
+```
+.github/workflows/verify.yml
+├── backend  — pytest -q
+└── frontend — npm run test:ci
+```
+
+---
+
+## 4. 사용한 API 목록
 
 ### 필수 API
 
@@ -139,7 +181,7 @@ npm run dev
 
 ---
 
-## 4. AI 도구 사용 내역
+## 5. AI 도구 사용 내역
 
 | AI 도구 | 활용 내용 |
 |---------|-----------|
@@ -155,7 +197,7 @@ npm run dev
 
 ---
 
-## 5. 설계 의도
+## 6. 설계 의도
 
 ### 왜 이 서비스를 선택했는가?
 
@@ -188,12 +230,14 @@ npm run dev
 
 | 계층 | 기술 |
 |------|------|
-| Backend | Python 3.10+ / FastAPI |
-| Frontend | React 18 + Vite |
+| Backend | Python 3.11+ / FastAPI |
+| Frontend | React 19 + Vite |
 | Styling | Tailwind CSS + Framer Motion |
 | Database | SQLite + SQLAlchemy |
 | API 연동 | bookprintapi-python-sdk (이 저장소) |
 | 이미지 처리 | Pillow |
+| 테스트 | pytest · Vitest · Playwright |
+| CI | GitHub Actions |
 
 ---
 
@@ -204,39 +248,46 @@ bookprintapi-python-sdk/
 ├── bookprintapi/                # BookPrint API Python SDK
 ├── rememory/                    # FastAPI 백엔드 (포트 8000)
 │   ├── main.py                  # 앱 진입점
-│   ├── config.py                # 환경변수
+│   ├── config.py                # 환경변수 (템플릿 UID, 간지 옵션 등)
 │   ├── database.py              # DB 엔진 + 마이그레이션 + 시드
 │   ├── models.py                # SQLAlchemy 모델
 │   ├── seed.py                  # 더미 데이터 생성
 │   ├── routes/
-│   │   ├── projects.py          # 프로젝트 CRUD · 공유 토큰
+│   │   ├── projects.py          # 프로젝트 CRUD · 간지 설정 · 공유 토큰
 │   │   ├── interviews.py        # 답변·사진 저장, 책 빌드
-│   │   └── orders.py            # 확정·주문·크레딧
+│   │   └── orders.py            # 확정·재빌드·주문·크레딧
 │   ├── services/
 │   │   ├── bookprint.py         # SDK 래퍼 함수
-│   │   └── book_builder.py      # DB → BookPrint API 파이프라인
+│   │   └── book_builder.py      # DB → BookPrint API 빌드 파이프라인
 │   ├── data/
-│   │   ├── questions.json       # 챕터별 질문 풀 (템플릿 × 챕터 × 3문항)
-│   │   ├── seed.json            # 더미 프로젝트 데이터
+│   │   ├── questions.json       # 질문 템플릿 (parents_memoir 등)
+│   │   ├── seed.json            # 더미 프로젝트 데이터 (5문항·15문항)
 │   │   └── sample_photos/       # 자동 생성 샘플 이미지
 │   ├── uploads/                 # 사용자 업로드 사진
-│   ├── .env.example             # 환경변수 템플릿
-│   └── requirements.txt
-├── frontend/                    # React 18 + Vite 프론트엔드 (포트 5173)
-│   └── src/
-│       ├── App.jsx              # 라우터 정의
-│       ├── lib/api.js           # API 클라이언트
-│       └── pages/
-│           ├── Landing.jsx      # 프로젝트 목록
-│           ├── ProjectCreate.jsx # 프로젝트 생성 (템플릿·깊이 선택)
-│           ├── Interview.jsx    # 인터뷰 위자드 + 공유 링크
-│           ├── Timeline.jsx     # 인생 타임라인
-│           ├── SharedInterview.jsx # 공동 작성 (공유 링크 참여)
-│           ├── Preview.jsx      # 책 미리보기
-│           ├── Order.jsx        # 주문 페이지
-│           └── Complete.jsx     # 주문 완료
-├── examples/                    # SDK 사용 예제
-└── requirements.txt             # Python 의존성
+│   └── .env.example             # 환경변수 템플릿
+├── frontend/                    # React 19 + Vite 프론트엔드 (포트 5173)
+│   ├── src/
+│   │   ├── App.jsx              # 라우터 정의
+│   │   ├── lib/api.js           # API 클라이언트
+│   │   ├── pages/
+│   │   │   ├── Landing.jsx      # 프로젝트 목록
+│   │   │   ├── ProjectCreate.jsx # 프로젝트 생성 (템플릿·깊이 선택)
+│   │   │   ├── Interview.jsx    # 인터뷰 위자드 + 공유 링크
+│   │   │   ├── Timeline.jsx     # 인생 타임라인
+│   │   │   ├── SharedInterview.jsx # 공동 작성 (공유 링크 참여)
+│   │   │   ├── Preview.jsx      # 책 미리보기 + 간지 커스터마이징
+│   │   │   ├── Order.jsx        # 주문 페이지
+│   │   │   └── Complete.jsx     # 주문 완료
+│   │   └── test/                # Vitest 단위 테스트
+│   └── tests/e2e/               # Playwright E2E 테스트
+├── tests/                       # pytest 백엔드 통합 테스트
+│   ├── conftest.py              # 픽스처 (격리 DB, BookPrint API 모킹)
+│   └── test_user_journey.py     # 4개 통합 테스트
+├── .github/workflows/
+│   └── verify.yml               # CI (백엔드 pytest + 프론트 빌드·테스트)
+├── requirements.txt             # 런타임 의존성
+├── requirements-dev.txt         # 테스트 의존성 (pytest, httpx)
+└── examples/                    # SDK 사용 예제
 ```
 
 ---
