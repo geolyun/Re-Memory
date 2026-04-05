@@ -59,18 +59,20 @@ def rebuild_book(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    """Clear generated content and move the project back to writing."""
+    """Clear generated content and move the project back to writing.
+
+    book_uid is set to None so that the next build call creates a fresh
+    BookPrint draft (handled by the build route's existing null-check).
+    This avoids an extra API round-trip here and makes the endpoint reliable.
+    """
     project = _get_owned_project(project_id, request, db)
     if project.status not in ("preview_ready", "building", "writing"):
         raise HTTPException(status_code=400, detail="수정할 수 없는 상태입니다.")
 
-    try:
-        bookprint.clear_contents(project.book_uid)
-    except Exception:
-        pass
-
+    project.book_uid = None
     for photo in project.photos:
         photo.api_file_name = None
+    project.cover_api_filename = None
     project.status = "writing"
     db.commit()
 

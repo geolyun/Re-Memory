@@ -1,5 +1,6 @@
 """Pipeline that builds a BookPrint book from DB data."""
 
+import os
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -8,17 +9,59 @@ import config
 import models
 from services import bookprint
 
+_DEFAULT_COVER_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "default_cover.jpg")
+
+
+def _ensure_default_cover() -> str:
+    """기본 표지 이미지가 없으면 Pillow로 생성하고 경로를 반환한다."""
+    if os.path.exists(_DEFAULT_COVER_PATH):
+        return _DEFAULT_COVER_PATH
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+        img = Image.new("RGB", (800, 800), color=(245, 240, 235))
+        draw = ImageDraw.Draw(img)
+        # 부드러운 그라데이션 효과 (단색 레이어로 근사)
+        for i in range(800):
+            alpha = int(30 * (i / 800))
+            draw.line([(0, i), (800, i)], fill=(200 - alpha, 185 - alpha, 170 - alpha))
+        # 중앙 텍스트
+        try:
+            font = ImageFont.truetype("arial.ttf", 48)
+            small_font = ImageFont.truetype("arial.ttf", 24)
+        except Exception:
+            font = ImageFont.load_default()
+            small_font = font
+        draw.text((400, 360), "📖", font=font, anchor="mm", fill=(120, 100, 80))
+        draw.text((400, 440), "Re:Memory", font=font, anchor="mm", fill=(100, 80, 60))
+        draw.text((400, 500), "기억을 엮다", font=small_font, anchor="mm", fill=(150, 130, 110))
+        os.makedirs(os.path.dirname(_DEFAULT_COVER_PATH), exist_ok=True)
+        img.save(_DEFAULT_COVER_PATH, "JPEG", quality=85)
+    except Exception as e:
+        print(f"[build] 기본 표지 생성 실패: {e}", flush=True)
+    return _DEFAULT_COVER_PATH
+
+
+def _refresh_draft_book(db: Session, project: models.Project) -> str:
+    """Create a fresh draft book and detach old uploaded asset references."""
+    new_book_uid = bookprint.create_book(project.title)
+    project.book_uid = new_book_uid
+    project.cover_api_filename = None
+    for photo in project.photos:
+        photo.api_file_name = None
+    db.commit()
+    return new_book_uid
+
 
 def build_book(db: Session, project: models.Project) -> None:
     """
     Send the project interview data to BookPrint API.
 
     Pipeline:
-      1. Clear existing contents if rebuilding
-      2. Upload cover photo (if any)
+      1. Prepare a fresh draft book when rebuilding
+      2. Upload cover photo
       3. Create cover
-      4. For each chapter: insert ganji + QnA pages
-      5. Pad blank pages to meet minimum page count
+      4. Insert chapter divider and QnA pages
+      5. Pad blank pages to minimum page count
       6. Insert publish page
     """
     book_uid = project.book_uid
@@ -26,12 +69,11 @@ def build_book(db: Session, project: models.Project) -> None:
         raise ValueError("book_uid is missing.")
 
     if project.status in ("preview_ready", "building"):
-        bookprint.clear_contents(book_uid)
+        book_uid = _refresh_draft_book(db, project)
 
     project.status = "building"
     db.commit()
 
-    # 1. 표지 사진 업로드
     cover_photo_name = None
     cover_photo = (
         db.query(models.Photo)
@@ -42,15 +84,33 @@ def build_book(db: Session, project: models.Project) -> None:
         )
         .first()
     )
-    if cover_photo and cover_photo.local_path:
-        print(f"[build] 표지 사진 업로드: {cover_photo.local_path}", flush=True)
-        cover_photo_name = bookprint.upload_photo(book_uid, cover_photo.local_path)
-        cover_photo.api_file_name = cover_photo_name
-        project.cover_api_filename = cover_photo_name
-        db.commit()
 
-    # 2. 표지 생성 (기존 표지 삭제 후 재생성)
-    bookprint.delete_cover(book_uid)
+    # 표지 사진 결정: 업로드 사진 → QnA 첫 번째 사진 → 기본 이미지 순서로 폴백
+    cover_local_path = None
+    if cover_photo and cover_photo.local_path and os.path.exists(cover_photo.local_path):
+        cover_local_path = cover_photo.local_path
+    else:
+        first_qna_photo = (
+            db.query(models.Photo)
+            .filter(
+                models.Photo.project_id == project.id,
+                models.Photo.is_cover == False,
+                models.Photo.qna_id != None,
+            )
+            .first()
+        )
+        if first_qna_photo and first_qna_photo.local_path and os.path.exists(first_qna_photo.local_path):
+            cover_local_path = first_qna_photo.local_path
+        else:
+            cover_local_path = _ensure_default_cover()
+
+    print(f"[build] 표지 사진 업로드: {cover_local_path}", flush=True)
+    cover_photo_name = bookprint.upload_photo(book_uid, cover_local_path)
+    if cover_photo:
+        cover_photo.api_file_name = cover_photo_name
+    project.cover_api_filename = cover_photo_name
+    db.commit()
+
     print(f"[build] 표지 생성: {project.title}", flush=True)
     bookprint.create_cover(
         book_uid,
@@ -58,7 +118,6 @@ def build_book(db: Session, project: models.Project) -> None:
         photo_file_name=cover_photo_name,
     )
 
-    # 3. 챕터별 내지 삽입
     chapters = (
         db.query(models.Chapter)
         .filter(models.Chapter.project_id == project.id)
@@ -74,13 +133,20 @@ def build_book(db: Session, project: models.Project) -> None:
         if not active_qnas:
             continue
 
-        # 간지 (2페이지)
-        print(f"[build] 간지 삽입: {chapter.title}", flush=True)
-        bookprint.insert_ganji(book_uid, chapter_num=chapter_idx, chapter_date=chapter_date)
-        content_pages += 2
+        if chapter.use_ganji:
+            print(f"[build] 간지 삽입: {chapter.title}", flush=True)
+            bookprint.insert_ganji(
+                book_uid,
+                chapter_num=chapter_idx,
+                chapter_date=chapter_date,
+                chapter_title=chapter.title,
+                tpl_uid=chapter.ganji_tpl_uid or None,
+            )
+            content_pages += 2
+        else:
+            print(f"[build] 간지 생략: {chapter.title}", flush=True)
 
         for qna in active_qnas:
-            # QnA 첫 번째 사진 업로드 (템플릿이 지원하는 경우 활용)
             photo_file_name = None
             if qna.photos:
                 first_photo = qna.photos[0]
@@ -99,14 +165,12 @@ def build_book(db: Session, project: models.Project) -> None:
             )
             content_pages += 1
 
-    # 4. 빈내지 패딩 (최소 페이지 - 발행면 1p 여유)
     padding_needed = max(0, config.MIN_PAGES - content_pages - 1)
     if padding_needed:
         print(f"[build] 빈내지 {padding_needed}장 추가", flush=True)
     for _ in range(padding_needed):
         bookprint.insert_blank(book_uid)
 
-    # 5. 발행면 삽입
     today_str = datetime.now().strftime("%Y.%m.%d")
     print(f"[build] 발행면 삽입: {today_str}", flush=True)
     bookprint.insert_publish(

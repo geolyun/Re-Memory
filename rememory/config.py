@@ -20,4 +20,13 @@ TPL_BLANK   = os.getenv("TPL_BLANK",   "2mi1ao0Z4Vxl")
 TPL_PUBLISH = os.getenv("TPL_PUBLISH", "5nhOVBjTnIVE")
 
 BOOK_SPEC_UID = os.getenv("BOOK_SPEC_UID", "SQUAREBOOK_HC")
-MIN_PAGES     = int(os.getenv("MIN_PAGES", "24"))
+MIN_PAGES     = int(os.getenv("MIN_PAGES", "0"))
+
+# 간지 템플릿 선택 목록: 쉼표로 구분된 "UID:이름" 형식
+# 예: "79yjMH3qRPly:클래식,AbCdEfGhIjKl:모던"
+# 이름 생략 시 "스타일 N" 으로 표시
+_raw_ganji_tpls = os.getenv("GANJI_TEMPLATE_OPTIONS", f"{TPL_GANJI}:기본")
+GANJI_TEMPLATES: list[dict] = []
+for _entry in _raw_ganji_tpls.split(","):
+    _parts = _entry.strip().split(":", 1)
+    GANJI_TEMPLATES.append({"uid": _parts[0], "name": _parts[1] if len(_parts) > 1 else f"스타일 {len(GANJI_TEMPLATES)+1}"})
