@@ -16,6 +16,13 @@ function formBody(data) {
   )
 }
 
+function sendFormBeacon(path, data) {
+  if (!navigator.sendBeacon) return false
+  const body = formBody(data).toString()
+  const blob = new Blob([body], { type: 'application/x-www-form-urlencoded;charset=UTF-8' })
+  return navigator.sendBeacon(`/api${path}`, blob)
+}
+
 export const api = {
   // ── 프로젝트 ──────────────────────────────────────
   getProjects: () =>
@@ -37,6 +44,9 @@ export const api = {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: formBody({ answer, skipped, time_period: timePeriod }),
     }),
+
+  saveAnswerBeacon: (projectId, qnaId, answer, skipped = false, timePeriod = '') =>
+    sendFormBeacon(`/projects/${projectId}/qna/${qnaId}`, { answer, skipped, time_period: timePeriod }),
 
   uploadPhoto: (projectId, qnaId, file) => {
     const fd = new FormData()
@@ -89,6 +99,17 @@ export const api = {
   getOrderDetail: (projectId) =>
     apiFetch(`/projects/${projectId}/order-detail`),
 
+  // ── 간지 설정 ─────────────────────────────────────
+  getGanjiTemplates: () =>
+    apiFetch('/ganji-templates'),
+
+  updateChapterGanji: (projectId, chapterId, useGanji, ganjiTplUid = '') =>
+    apiFetch(`/projects/${projectId}/chapters/${chapterId}/ganji`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formBody({ use_ganji: useGanji, ganji_tpl_uid: ganjiTplUid }),
+    }),
+
   // ── 공유 ──────────────────────────────────────────
   createShareToken: (projectId) =>
     apiFetch(`/projects/${projectId}/share`, { method: 'POST' }),
@@ -105,6 +126,9 @@ export const api = {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: formBody({ answer, time_period: timePeriod, contributor_name: contributorName }),
     }),
+
+  saveSharedAnswerBeacon: (token, qnaId, answer, timePeriod = '', contributorName = '') =>
+    sendFormBeacon(`/share/${token}/qna/${qnaId}`, { answer, time_period: timePeriod, contributor_name: contributorName }),
 
   // ── 크레딧 ────────────────────────────────────────
   getBalance: () =>

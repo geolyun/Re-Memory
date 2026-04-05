@@ -28,6 +28,11 @@ export default function SharedInterview() {
   const [error, setError] = useState('')
   const [notFound, setNotFound] = useState(false)
   const timers = useRef({})
+  const answerRef = useRef('')
+  const timePeriodRef = useRef('')
+  const qnasRef = useRef([])
+  const idxRef = useRef(0)
+  const contributorNameRef = useRef('')
 
   useEffect(() => {
     api.getSharedProject(token)
@@ -45,6 +50,28 @@ export default function SharedInterview() {
     }
   }, [idx, qnas])
 
+  // refs를 최신 상태와 동기화
+  useEffect(() => { answerRef.current = answer }, [answer])
+  useEffect(() => { timePeriodRef.current = timePeriod }, [timePeriod])
+  useEffect(() => { qnasRef.current = qnas }, [qnas])
+  useEffect(() => { idxRef.current = idx }, [idx])
+  useEffect(() => { contributorNameRef.current = contributorName }, [contributorName])
+
+  // unmount 또는 페이지 이탈 시 대기 중인 저장 flush
+  useEffect(() => {
+    const flush = () => {
+      const cur = qnasRef.current[idxRef.current]
+      if (!cur || !answerRef.current.trim()) return
+      clearTimeout(timers.current[cur.id])
+      api.saveSharedAnswerBeacon(token, cur.id, answerRef.current, timePeriodRef.current, contributorNameRef.current)
+    }
+    window.addEventListener('beforeunload', flush)
+    return () => {
+      window.removeEventListener('beforeunload', flush)
+      flush()
+    }
+  }, [token])
+
   const scheduleAutoSave = useCallback((qnaId, ans, period, name) => {
     clearTimeout(timers.current[qnaId])
     timers.current[qnaId] = setTimeout(async () => {
@@ -52,7 +79,9 @@ export default function SharedInterview() {
         await api.saveSharedAnswer(token, qnaId, ans, period, name)
         setSaved(true)
         setTimeout(() => setSaved(false), 2000)
-      } catch { }
+      } catch (e) {
+        setError(`자동 저장 실패: ${e.message}`)
+      }
     }, 1500)
   }, [token])
 
