@@ -160,6 +160,9 @@ def get_estimate(
     """Get normalized estimate data for the order page."""
     project = _get_owned_project(project_id, request, db)
 
+    if not project.book_uid:
+        raise HTTPException(status_code=404, detail="아직 빌드되지 않은 책입니다.")
+
     try:
         estimate = bookprint.get_estimate(project.book_uid, quantity=max(1, quantity))
     except Exception as e:

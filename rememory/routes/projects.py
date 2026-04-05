@@ -196,10 +196,12 @@ async def delete_project(project_id: int, request: Request, db: Session = Depend
         except Exception:
             pass
 
-    # 로컬 파일 삭제
+    # 로컬 파일 삭제 (uploads/ 디렉토리 안의 파일만 — seed 샘플 사진 보호)
+    upload_dir = os.path.realpath(config.UPLOAD_DIR)
     for photo in project.photos:
         if photo.local_path and os.path.exists(photo.local_path):
-            os.remove(photo.local_path)
+            if os.path.realpath(photo.local_path).startswith(upload_dir):
+                os.remove(photo.local_path)
 
     db.delete(project)
     db.commit()

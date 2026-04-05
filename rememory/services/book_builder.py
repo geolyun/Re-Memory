@@ -43,7 +43,10 @@ def _ensure_default_cover() -> str:
 
 def _refresh_draft_book(db: Session, project: models.Project) -> str:
     """Create a fresh draft book and detach old uploaded asset references."""
-    new_book_uid = bookprint.create_book(project.title)
+    try:
+        new_book_uid = bookprint.create_book(project.title)
+    except Exception as e:
+        raise RuntimeError(f"BookPrint 책 초기화 실패: {e}") from e
     project.book_uid = new_book_uid
     project.cover_api_filename = None
     for photo in project.photos:
@@ -165,7 +168,8 @@ def build_book(db: Session, project: models.Project) -> None:
             )
             content_pages += 1
 
-    padding_needed = max(0, config.MIN_PAGES - content_pages - 1)
+    API_MIN_PAGES = 20  # BookPrint API 최소 페이지 요건 (발행면 제외)
+    padding_needed = max(0, max(config.MIN_PAGES, API_MIN_PAGES) - content_pages - 1)
     if padding_needed:
         print(f"[build] 빈내지 {padding_needed}장 추가", flush=True)
     for _ in range(padding_needed):

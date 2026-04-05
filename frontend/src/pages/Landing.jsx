@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, BookOpen, Clock, ChevronRight } from 'lucide-react'
+import { Plus, BookOpen, Clock, ChevronRight, Trash2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { api } from '../lib/api'
 
@@ -37,6 +37,7 @@ const item = {
 export default function Landing() {
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -45,6 +46,20 @@ export default function Landing() {
       .catch(() => { })
       .finally(() => setLoading(false))
   }, [])
+
+  const handleDelete = async (e, projectId) => {
+    e.stopPropagation()
+    if (!confirm('이 인터뷰북을 삭제하시겠습니까?\n삭제 후 되돌릴 수 없습니다.')) return
+    setDeleting(projectId)
+    try {
+      await api.deleteProject(projectId)
+      setProjects(prev => prev.filter(p => p.id !== projectId))
+    } catch (err) {
+      alert(`삭제 실패: ${err.message}`)
+    } finally {
+      setDeleting(null)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-10 w-full items-center pb-12 mt-2">
@@ -127,7 +142,24 @@ export default function Landing() {
                       <p className="text-slate-400 text-xs flex items-center gap-1.5 font-semibold">
                         <Clock className="w-3.5 h-3.5" /> 업데이트: {fmtDate(p.updated_at)}
                       </p>
-                      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (p.status === 'ordered') {
+                              alert('주문을 먼저 취소해주세요.')
+                              return
+                            }
+                            handleDelete(e, p.id)
+                          }}
+                          disabled={deleting === p.id}
+                          className={`p-1.5 rounded-lg transition-all duration-200 disabled:opacity-40 opacity-0 group-hover:opacity-100 ${p.status === 'ordered' ? 'text-slate-300 cursor-not-allowed' : 'text-slate-400 hover:text-red-400 hover:bg-red-50'}`}
+                          title={p.status === 'ordered' ? '주문을 먼저 취소해주세요' : '프로젝트 삭제'}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
+                      </div>
                     </div>
                   </div>
                 </motion.button>
