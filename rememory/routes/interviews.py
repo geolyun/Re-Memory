@@ -245,6 +245,19 @@ def build_book(
     from services.book_builder import build_book as _build
 
     project = _get_owned_project(project_id, request, db)
+    has_answers = (
+        db.query(models.QnA.id)
+        .join(models.Chapter, models.Chapter.id == models.QnA.chapter_id)
+        .filter(
+            models.Chapter.project_id == project_id,
+            models.QnA.skipped == False,
+            models.QnA.answer_text.isnot(None),
+            models.QnA.answer_text != "",
+        )
+        .first()
+    )
+    if not has_answers:
+        raise HTTPException(status_code=400, detail="작성된 답변이 없습니다. 인터뷰를 먼저 작성해주세요.")
     if not project.book_uid:
         # 시드 데이터 등 book_uid 없는 프로젝트: 자동 생성
         try:
@@ -270,6 +283,10 @@ def build_book(
             log.error("[build] 오류: %s", e)
             detail = f"책 빌드 오류: {e}"
         project.status = "writing"
+        project.book_uid = None
+        project.cover_api_filename = None
+        for photo in project.photos:
+            photo.api_file_name = None
         db.commit()
         raise HTTPException(status_code=502, detail=detail)
 

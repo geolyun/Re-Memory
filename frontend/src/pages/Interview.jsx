@@ -28,6 +28,8 @@ export default function Interview() {
   const [showSharePanel, setShowSharePanel] = useState(false)
   const [copied, setCopied] = useState(false)
   const timers = useRef({})
+  const qnasRef = useRef([])
+  const idxRef = useRef(0)
 
   useEffect(() => {
     api.getProject(id).then(({ project, qnas }) => {
@@ -36,6 +38,25 @@ export default function Interview() {
       if (project.share_token) setShareToken(project.share_token)
     }).catch(() => navigate('/'))
   }, [id, navigate])
+
+  // refs를 최신 상태와 동기화
+  useEffect(() => { qnasRef.current = qnas }, [qnas])
+  useEffect(() => { idxRef.current = idx }, [idx])
+
+  // unmount 또는 페이지 이탈 시 대기 중인 저장 flush
+  useEffect(() => {
+    const flush = () => {
+      const cur = qnasRef.current[idxRef.current]
+      if (!cur) return
+      clearTimeout(timers.current[cur.id])
+      api.saveAnswerBeacon(id, cur.id, cur.answer, false, cur.time_period)
+    }
+    window.addEventListener('beforeunload', flush)
+    return () => {
+      window.removeEventListener('beforeunload', flush)
+      flush()
+    }
+  }, [id])
 
   const cur = qnas[idx]
 
@@ -46,7 +67,9 @@ export default function Interview() {
         await api.saveAnswer(id, qnaId, answer, false, timePeriod)
         setSaved(true)
         setTimeout(() => setSaved(false), 2000)
-      } catch { }
+      } catch (e) {
+        setError(`자동 저장 실패: ${e.message}`)
+      }
     }, 800)
   }, [id])
 
@@ -64,7 +87,8 @@ export default function Interview() {
   const moveTo = async (nextIdx) => {
     if (cur) {
       clearTimeout(timers.current[cur.id])
-      await api.saveAnswer(id, cur.id, cur.answer, cur.skipped, cur.time_period).catch(() => { })
+      await api.saveAnswer(id, cur.id, cur.answer, cur.skipped, cur.time_period)
+        .catch(e => setError(`저장 실패: ${e.message}`))
     }
     setIdx(nextIdx)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -101,7 +125,7 @@ export default function Interview() {
   }
 
   const handleBuild = async () => {
-    if (cur) await api.saveAnswer(id, cur.id, cur.answer, cur.skipped).catch(() => { })
+    if (cur) await api.saveAnswer(id, cur.id, cur.answer, cur.skipped, cur.time_period).catch(() => { })
     setBuilding(true); setError('')
     try {
       await api.buildBook(id)

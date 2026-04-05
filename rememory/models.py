@@ -1,9 +1,13 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from database import Base
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class User(Base):
@@ -12,7 +16,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     session_id = Column(String, unique=True, index=True)
     name = Column(String, default="익명")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 
     projects = relationship("Project", back_populates="user")
 
@@ -34,8 +38,8 @@ class Project(Base):
     # draft → writing → building → preview_ready → finalized → ordered
     status = Column(String, default="draft")
     page_count = Column(Integer, nullable=True)        # 확정 후 총 페이지 수
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     user = relationship("User", back_populates="projects")
     chapters = relationship("Chapter", back_populates="project", order_by="Chapter.order_index",
@@ -50,6 +54,8 @@ class Chapter(Base):
     project_id = Column(Integer, ForeignKey("projects.id"))
     title = Column(String)
     order_index = Column(Integer)
+    use_ganji = Column(Boolean, default=True, nullable=False)   # 간지 포함 여부
+    ganji_tpl_uid = Column(String, nullable=True)               # 간지 템플릿 UID (None = 기본값)
 
     project = relationship("Project", back_populates="chapters")
     qnas = relationship("QnA", back_populates="chapter", order_by="QnA.order_index",
