@@ -458,14 +458,27 @@ def save_shared_answer(
         raise HTTPException(status_code=404, detail="질문을 찾을 수 없습니다.")
 
     if answer.strip():
-        db.add(
-            models.Contribution(
-                qna_id=qna.id,
-                contributor_name=contributor_name.strip() or None,
-                answer_text=answer.strip(),
-                time_period=time_period.strip() or None,
+        name = contributor_name.strip() or None
+        existing = (
+            db.query(models.Contribution)
+            .filter(
+                models.Contribution.qna_id == qna.id,
+                models.Contribution.contributor_name == name,
             )
+            .first()
         )
+        if existing:
+            existing.answer_text = answer.strip()
+            existing.time_period = time_period.strip() or None
+        else:
+            db.add(
+                models.Contribution(
+                    qna_id=qna.id,
+                    contributor_name=name,
+                    answer_text=answer.strip(),
+                    time_period=time_period.strip() or None,
+                )
+            )
         db.commit()
 
     return JSONResponse({"ok": True})

@@ -82,8 +82,8 @@ TPL_PUBLISH=5nhOVBjTnIVE
 ### 실행
 
 ```bash
-# 터미널 1 — 백엔드 (포트 8000)
-cd rememory && python main.py
+# 터미널 1 — 백엔드 (포트 8000, 루트에서 실행)
+python run_rememory.py
 
 # 터미널 2 — 프론트엔드 (포트 5173)
 cd frontend && npm run dev
