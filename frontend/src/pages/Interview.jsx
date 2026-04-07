@@ -242,10 +242,10 @@ export default function Interview() {
                 <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
                   <ImagePlus className="w-5 h-5 text-primary-500" /> 소중한 사진
                 </h3>
-                <span className="text-xs text-slate-400">{cur.photos.length}/5</span>
+                <span className="text-xs text-slate-400">{cur.photos.length}/1</span>
               </div>
               <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                질문과 관련된 사진이 있다면 올려주세요. 첫 번째 사진이 내용의 대표 이미지로 사용됩니다.
+                질문과 관련된 사진이 있다면 올려주세요. 업로드된 사진은 책 본문에 그대로 반영됩니다.
               </p>
 
               <div className="flex flex-col gap-3 mt-2">
