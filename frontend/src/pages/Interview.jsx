@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+﻿import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Upload, Trash2, Check, BookOpen, Loader2, ImagePlus, Clock, Share2, Copy, CheckCheck } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -264,7 +264,7 @@ export default function Interview() {
                   </div>
                 ))}
 
-                {cur.photos.length < 5 && (
+                {cur.photos.length < 1 && (
                   <label className="w-full h-32 rounded-xl border-2 border-dashed border-slate-200 hover:border-primary-400 flex flex-col items-center justify-center cursor-pointer hover:bg-primary-50/50 transition-all duration-300 group">
                     <Upload className="w-6 h-6 text-slate-300 group-hover:text-primary-400 group-hover:-translate-y-1 transition-all duration-300 mb-2" />
                     <span className="text-xs font-semibold text-slate-400 group-hover:text-primary-500">클릭하여 사진 첨부</span>

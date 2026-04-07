@@ -30,8 +30,8 @@ def create_book(title: str) -> str:
     )
     try:
         return result["data"]["bookUid"]
-    except (KeyError, TypeError) as e:
-        raise RuntimeError(f"책 생성 응답 파싱 오류: {e} / 응답: {result}") from e
+    except (KeyError, TypeError) as exc:
+        raise RuntimeError(f"책 생성 응답 파싱 오류: {exc} / 응답: {result}") from exc
 
 
 def upload_photo(book_uid: str, file_path: str) -> str:
@@ -39,8 +39,8 @@ def upload_photo(book_uid: str, file_path: str) -> str:
     result = client.photos.upload(book_uid, file_path)
     try:
         return result["data"]["fileName"]
-    except (KeyError, TypeError) as e:
-        raise RuntimeError(f"사진 업로드 응답 파싱 오류: {e} / 응답: {result}") from e
+    except (KeyError, TypeError) as exc:
+        raise RuntimeError(f"사진 업로드 응답 파싱 오류: {exc} / 응답: {result}") from exc
 
 
 def _season_title(month: int) -> str:
@@ -66,16 +66,15 @@ def insert_ganji(
         template_uid=tpl_uid or config.TPL_GANJI,
         parameters={
             "year": str(chapter_date.year),
-            "monthTitle": f"{chapter_date.month}월",
-            "chapterNum": str(chapter_num),
-            "chapterTitle": chapter_title,
-            "season_title": _season_title(chapter_date.month),
+            "monthTitle": f"{chapter_date.month}월의 기록",
+            "chapterNum": f"{chapter_num:02d}",
         },
     )
     time.sleep(0.5)
 
 
-def insert_qna(book_uid: str, question: str, answer: str, photo_file_name: str | None = None):
+def insert_qna(book_uid: str, question: str, answer: str):
+    # TPL_QNA(5B4ds6i0Rywx)는 텍스트 전용 템플릿이라 이미지 슬롯이 없다.
     now = datetime.now()
     diary_text = f"Q. {question}\n\nA. {answer or ''}"
     client = get_client()
@@ -92,6 +91,24 @@ def insert_qna(book_uid: str, question: str, answer: str, photo_file_name: str |
     time.sleep(0.5)
 
 
+def insert_qna_with_photo(book_uid: str, question: str, answer: str, photo_file_name: str):
+    now = datetime.now()
+    diary_text = f"Q. {question}\n\nA. {answer or ''}"
+    client = get_client()
+    client.contents.insert(
+        book_uid,
+        template_uid=config.TPL_QNA_WITH_PHOTO,
+        parameters={
+            "monthNum": f"{now.month:02d}",
+            "dayNum": f"{now.day:02d}",
+            "diaryText": diary_text,
+            "photo": photo_file_name,
+        },
+        break_before="page",
+    )
+    time.sleep(0.5)
+
+
 def insert_blank(book_uid: str):
     client = get_client()
     client.contents.insert(
@@ -102,24 +119,25 @@ def insert_blank(book_uid: str):
     time.sleep(0.5)
 
 
-def insert_publish(book_uid: str, title: str, author: str, publish_date: str):
+def insert_publish(book_uid: str, title: str, author: str, publish_date: str, photo_file_name: str | None = None):
+    params: dict = {
+        "title": title,
+        "publishDate": publish_date,
+        "author": author,
+        "hashtags": "#리멤버리 #회고록",
+        "publisher": "(주)스위트북",
+    }
+    if photo_file_name:
+        params["photo"] = photo_file_name
+
     client = get_client()
     client.contents.insert(
         book_uid,
         template_uid=config.TPL_PUBLISH,
-        parameters={
-            "title": title,
-            "publishDate": publish_date,
-            "author": author,
-        },
+        parameters=params,
         break_before="page",
     )
     time.sleep(0.5)
-
-
-def clear_contents(book_uid: str):
-    client = get_client()
-    client.contents.clear(book_uid)
 
 
 def delete_cover(book_uid: str):
@@ -127,9 +145,9 @@ def delete_cover(book_uid: str):
     try:
         client = get_client()
         client.covers.delete(book_uid)
-    except ApiError as e:
-        details = " ".join(str(x) for x in (e.details or [])) if isinstance(e.details, list) else str(e.details or "")
-        if e.status_code == 404 or "없" in details or "존재하지" in details:
+    except ApiError as exc:
+        details = " ".join(str(x) for x in (exc.details or [])) if isinstance(exc.details, list) else str(exc.details or "")
+        if exc.status_code == 404 or "없" in details or "not found" in details.lower():
             return
         raise
 
@@ -163,11 +181,10 @@ def finalize_book(book_uid: str, max_retries: int = 5) -> dict:
         try:
             result = client.books.finalize(book_uid)
             return result.get("data", {})
-        except ApiError as e:
+        except ApiError as exc:
             is_page_error = (
-                e.status_code == 400
-                or "최소 페이지" in str(e.details)
-                or "minimum" in str(e.details).lower()
+                exc.status_code == 400
+                or "minimum" in str(exc.details).lower()
             )
             if is_page_error and attempt < max_retries - 1:
                 for _ in range(4):

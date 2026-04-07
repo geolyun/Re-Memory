@@ -132,7 +132,12 @@ export default function Landing() {
                   <div className="flex-1 min-w-0 flex flex-col h-full justify-between z-10">
                     <div>
                       <div className="flex items-start justify-between gap-2 mb-1.5 mt-0.5">
-                        <span className="font-bold text-lg text-slate-800 truncate group-hover:text-primary-600 transition-colors drop-shadow-sm">{p.title}</span>
+                        <div className="min-w-0 flex items-center gap-2">
+                          <span className="font-bold text-lg text-slate-800 truncate group-hover:text-primary-600 transition-colors drop-shadow-sm">{p.title}</span>
+                          {p.is_demo && (
+                            <span className="flex-shrink-0 text-[10px] px-2 py-1 rounded-full font-bold tracking-wider border border-sky-200 bg-sky-50 text-sky-600">DEMO</span>
+                          )}
+                        </div>
                         <span className={`flex-shrink-0 text-[10px] px-2.5 py-1 rounded-full font-bold tracking-wider ${s.color}`}>{s.label}</span>
                       </div>
                       <p className="text-slate-600 text-sm font-semibold">{p.subject_name} <span className="text-slate-400">({p.relationship_type})</span></p>
@@ -146,14 +151,15 @@ export default function Landing() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
+                            if (p.is_demo) return
                             if (p.status === 'ordered') {
                               alert('주문을 먼저 취소해주세요.')
                               return
                             }
                             handleDelete(e, p.id)
                           }}
-                          disabled={deleting === p.id}
-                          className={`p-1.5 rounded-lg transition-all duration-200 disabled:opacity-40 opacity-0 group-hover:opacity-100 ${p.status === 'ordered' ? 'text-slate-300 cursor-not-allowed' : 'text-slate-400 hover:text-red-400 hover:bg-red-50'}`}
+                          disabled={deleting === p.id || p.is_demo}
+                          className={`p-1.5 rounded-lg transition-all duration-200 disabled:opacity-40 opacity-0 group-hover:opacity-100 ${p.status === 'ordered' || p.is_demo ? 'text-slate-300 cursor-not-allowed' : 'text-slate-400 hover:text-red-400 hover:bg-red-50'}`}
                           title={p.status === 'ordered' ? '주문을 먼저 취소해주세요' : '프로젝트 삭제'}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
