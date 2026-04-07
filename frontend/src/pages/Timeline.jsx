@@ -4,13 +4,13 @@ import { motion } from 'framer-motion'
 import { BookOpen, ChevronRight, Clock } from 'lucide-react'
 import { api } from '../lib/api'
 
-const PERIOD_ORDER = ['유년기', '청소년기', '청년기', '결혼/가정기', '중장년기', '노년기']
+const PERIOD_ORDER = ['유년기', '청소년기', '청년기', '결혼·가정기', '중장년기', '노년기']
 
 const PERIOD_EMOJI = {
   유년기: '🌱',
   청소년기: '🎒',
   청년기: '✨',
-  '결혼/가정기': '💞',
+  '결혼·가정기': '💞',
   중장년기: '🏡',
   노년기: '🍂',
   '시기 미정': '🕰️',
@@ -20,7 +20,7 @@ const PERIOD_COLOR = {
   유년기: 'from-yellow-400 to-amber-400',
   청소년기: 'from-blue-400 to-cyan-400',
   청년기: 'from-emerald-400 to-teal-400',
-  '결혼/가정기': 'from-pink-400 to-rose-400',
+  '결혼·가정기': 'from-pink-400 to-rose-400',
   중장년기: 'from-violet-400 to-purple-400',
   노년기: 'from-slate-400 to-slate-500',
   '시기 미정': 'from-slate-300 to-slate-400',
@@ -30,7 +30,7 @@ const PERIOD_BG = {
   유년기: 'bg-amber-50 border-amber-100',
   청소년기: 'bg-blue-50 border-blue-100',
   청년기: 'bg-emerald-50 border-emerald-100',
-  '결혼/가정기': 'bg-pink-50 border-pink-100',
+  '결혼·가정기': 'bg-pink-50 border-pink-100',
   중장년기: 'bg-violet-50 border-violet-100',
   노년기: 'bg-slate-50 border-slate-200',
   '시기 미정': 'bg-slate-50 border-slate-200',

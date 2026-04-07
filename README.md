@@ -143,7 +143,6 @@ npm run test:ci
 | `POST` | `/Books/{bookUid}/finalization` | `client.books.finalize()` | 책 확정 (PDF 생성) |
 | `POST` | `/Books/{bookUid}/photos` | `client.photos.upload()` | 사진 업로드 |
 | `POST` | `/Books/{bookUid}/cover` | `client.covers.create()` | 표지 생성 |
-| `DELETE` | `/Books/{bookUid}/cover` | `client.covers.delete()` | 표지 삭제 (재빌드 시) |
 | `POST` | `/Books/{bookUid}/contents` | `client.contents.insert()` | 내지 삽입 (간지·QnA·빈내지·발행면) |
 
 ### 주문 / 크레딧

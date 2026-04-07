@@ -45,7 +45,7 @@ export default function SharedInterview() {
 
   useEffect(() => {
     if (qnas[idx]) {
-      setAnswer(qnas[idx].answer || '')
+      setAnswer('')
       setTimePeriod(qnas[idx].time_period || '')
     }
   }, [idx, qnas])
@@ -106,7 +106,7 @@ export default function SharedInterview() {
   }
 
   const handleSave = async () => {
-    if (!answer.trim() || !qnas[idx]) return
+    if (!isAnswerChanged || !qnas[idx]) return
     clearTimeout(timers.current[qnas[idx].id])
     setSaving(true)
     setError('')
@@ -177,6 +177,7 @@ export default function SharedInterview() {
   const cur = qnas[idx]
   const progress = ((idx + 1) / qnas.length) * 100
   const hasAnswer = cur?.answer && cur.answer.trim()
+  const isAnswerChanged = answer.trim().length > 0
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-8 pb-16">
@@ -280,7 +281,7 @@ export default function SharedInterview() {
           <div className="glass-panel bg-white/90 p-2 focus-within:ring-2 ring-indigo-400/50 transition-all rounded-3xl shadow-sm">
             <textarea
               className="w-full bg-transparent border-none focus:ring-0 text-lg p-6 min-h-[280px] text-slate-800 placeholder-slate-300 resize-y leading-[1.8] font-medium"
-              placeholder={cur?.placeholder || `${project.subject_name}의 이야기를 들려주세요...`}
+              placeholder={cur?.placeholder || `기억하는 이야기를 새로 남겨주세요...`}
               value={answer}
               onChange={handleAnswerChange}
             />
@@ -288,7 +289,7 @@ export default function SharedInterview() {
 
           <button
             onClick={handleSave}
-            disabled={saving || !answer.trim()}
+            disabled={saving || !isAnswerChanged}
             className={`flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-lg transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed ${saved ? 'bg-green-500 text-white' : 'bg-indigo-500 hover:bg-indigo-600 text-white'
               }`}
           >
