@@ -8,6 +8,10 @@ export default function ProjectRouter() {
 
   useEffect(() => {
     api.getProject(id).then(({ project }) => {
+      if (project.read_only) {
+        navigate(`/projects/${id}/timeline`, { replace: true })
+        return
+      }
       const s = project.status
       if (s === 'ordered') navigate(`/projects/${id}/complete`, { replace: true })
       else if (s === 'finalized') navigate(`/projects/${id}/order`, { replace: true })

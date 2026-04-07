@@ -43,6 +43,19 @@ def run_migrations():
         if "ganji_tpl_uid" not in chapter_columns:
             conn.execute(text("ALTER TABLE chapters ADD COLUMN ganji_tpl_uid VARCHAR"))
 
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS contributions (
+                id INTEGER PRIMARY KEY,
+                qna_id INTEGER NOT NULL,
+                contributor_name VARCHAR,
+                answer_text TEXT NOT NULL,
+                time_period VARCHAR,
+                created_at DATETIME,
+                FOREIGN KEY(qna_id) REFERENCES qnas(id)
+            )
+        """))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contributions_qna_id ON contributions (qna_id)"))
+
         conn.commit()
 
 

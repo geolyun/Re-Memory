@@ -4,36 +4,36 @@ import { motion } from 'framer-motion'
 import { BookOpen, ChevronRight, Clock } from 'lucide-react'
 import { api } from '../lib/api'
 
-const PERIOD_ORDER = ['유년기', '청소년기', '청년기', '결혼·가정기', '중장년기', '노년기']
+const PERIOD_ORDER = ['유년기', '청소년기', '청년기', '결혼/가정기', '중장년기', '노년기']
 
 const PERIOD_EMOJI = {
-  '유년기': '👶',
-  '청소년기': '🎒',
-  '청년기': '🌱',
-  '결혼·가정기': '💑',
-  '중장년기': '🏡',
-  '노년기': '🌿',
-  '시기 미지정': '📝',
+  유년기: '🌱',
+  청소년기: '🎒',
+  청년기: '✨',
+  '결혼/가정기': '💞',
+  중장년기: '🏡',
+  노년기: '🍂',
+  '시기 미정': '🕰️',
 }
 
 const PERIOD_COLOR = {
-  '유년기': 'from-yellow-400 to-amber-400',
-  '청소년기': 'from-blue-400 to-cyan-400',
-  '청년기': 'from-emerald-400 to-teal-400',
-  '결혼·가정기': 'from-pink-400 to-rose-400',
-  '중장년기': 'from-violet-400 to-purple-400',
-  '노년기': 'from-slate-400 to-slate-500',
-  '시기 미지정': 'from-slate-300 to-slate-400',
+  유년기: 'from-yellow-400 to-amber-400',
+  청소년기: 'from-blue-400 to-cyan-400',
+  청년기: 'from-emerald-400 to-teal-400',
+  '결혼/가정기': 'from-pink-400 to-rose-400',
+  중장년기: 'from-violet-400 to-purple-400',
+  노년기: 'from-slate-400 to-slate-500',
+  '시기 미정': 'from-slate-300 to-slate-400',
 }
 
 const PERIOD_BG = {
-  '유년기': 'bg-amber-50 border-amber-100',
-  '청소년기': 'bg-blue-50 border-blue-100',
-  '청년기': 'bg-emerald-50 border-emerald-100',
-  '결혼·가정기': 'bg-pink-50 border-pink-100',
-  '중장년기': 'bg-violet-50 border-violet-100',
-  '노년기': 'bg-slate-50 border-slate-200',
-  '시기 미지정': 'bg-slate-50 border-slate-200',
+  유년기: 'bg-amber-50 border-amber-100',
+  청소년기: 'bg-blue-50 border-blue-100',
+  청년기: 'bg-emerald-50 border-emerald-100',
+  '결혼/가정기': 'bg-pink-50 border-pink-100',
+  중장년기: 'bg-violet-50 border-violet-100',
+  노년기: 'bg-slate-50 border-slate-200',
+  '시기 미정': 'bg-slate-50 border-slate-200',
 }
 
 export default function Timeline() {
@@ -55,16 +55,16 @@ export default function Timeline() {
 
         const map = {}
         for (const q of answered) {
-          const key = q.time_period || '시기 미지정'
+          const key = q.time_period || '시기 미정'
           if (!map[key]) map[key] = []
           map[key].push(q)
         }
 
-        const knownPeriods = new Set([...PERIOD_ORDER, '시기 미지정'])
+        const knownPeriods = new Set([...PERIOD_ORDER, '시기 미정'])
         const sorted = [
           ...PERIOD_ORDER.filter((p) => map[p]).map((p) => ({ period: p, qnas: map[p] })),
           ...Object.keys(map).filter((k) => !knownPeriods.has(k)).map((k) => ({ period: k, qnas: map[k] })),
-          ...(map['시기 미지정'] ? [{ period: '시기 미지정', qnas: map['시기 미지정'] }] : []),
+          ...(map['시기 미정'] ? [{ period: '시기 미정', qnas: map['시기 미정'] }] : []),
         ]
 
         setGroups(sorted)
@@ -98,17 +98,19 @@ export default function Timeline() {
   }
 
   const totalAnswered = groups.reduce((acc, g) => acc + g.qnas.length, 0)
+  const isReadOnly = Boolean(project.read_only)
 
   return (
     <div className="max-w-3xl mx-auto w-full flex flex-col gap-8 pb-16">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
         <h1 className="text-4xl md:text-5xl font-extrabold mb-3 tracking-tight text-slate-800">
-          {project.subject_name}님의 인생 타임라인
+          {project.subject_name}의 인생 타임라인
         </h1>
         <p className="text-slate-500 font-medium">
           {totalAnswered}개의 이야기가 시간 순서로 모였습니다.
           {unanswered > 0 ? <span className="ml-2 text-amber-500 font-bold">미작성 {unanswered}문항</span> : null}
         </p>
+        {isReadOnly ? <p className="text-sm text-sky-600 font-semibold mt-3">데모 프로젝트는 읽기 전용입니다.</p> : null}
       </motion.div>
 
       {groups.length > 0 ? (
@@ -120,7 +122,7 @@ export default function Timeline() {
               onClick={() => scrollToPeriod(g.period)}
               className={`text-left px-5 py-3 rounded-2xl text-sm font-extrabold transition-all duration-300 ${activePeriod === g.period ? 'bg-primary-50 text-primary-600 shadow-sm border border-primary-100 scale-105' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
             >
-              <span className="mr-2 text-lg">{PERIOD_EMOJI[g.period] || PERIOD_EMOJI['시기 미지정']}</span>
+              <span className="mr-2 text-lg">{PERIOD_EMOJI[g.period] || PERIOD_EMOJI['시기 미정']}</span>
               {g.period}
             </button>
           ))}
@@ -145,9 +147,9 @@ export default function Timeline() {
         <div className="glass-panel bg-white/80 p-12 text-center flex flex-col items-center gap-4">
           <Clock className="w-12 h-12 text-slate-300" />
           <p className="text-slate-500 font-semibold">아직 시기가 지정된 답변이 없습니다.</p>
-          <p className="text-sm text-slate-400">인터뷰 작성 시 각 답변에 인생 시기를 선택해주세요.</p>
-          <Link to={`/projects/${id}/interview`} className="btn-primary px-6 py-3 text-sm mt-2">
-            인터뷰 작성하기
+          <p className="text-sm text-slate-400">인터뷰를 작성한 뒤 각 답변에 인생 시기를 선택하면 여기에 정리됩니다.</p>
+          <Link to={isReadOnly ? '/projects/new' : `/projects/${id}/interview`} className="btn-primary px-6 py-3 text-sm mt-2">
+            {isReadOnly ? '내 프로젝트 만들기' : '인터뷰 작성하기'}
           </Link>
         </div>
       ) : (
@@ -155,9 +157,9 @@ export default function Timeline() {
           <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-slate-200 via-slate-200 to-transparent" />
 
           {groups.map((group, gi) => {
-            const emoji = PERIOD_EMOJI[group.period] || PERIOD_EMOJI['시기 미지정']
-            const color = PERIOD_COLOR[group.period] || PERIOD_COLOR['시기 미지정']
-            const bg = PERIOD_BG[group.period] || PERIOD_BG['시기 미지정']
+            const emoji = PERIOD_EMOJI[group.period] || PERIOD_EMOJI['시기 미정']
+            const color = PERIOD_COLOR[group.period] || PERIOD_COLOR['시기 미정']
+            const bg = PERIOD_BG[group.period] || PERIOD_BG['시기 미정']
 
             return (
               <motion.div
@@ -207,15 +209,25 @@ export default function Timeline() {
       )}
 
       <div className="flex gap-3 justify-center mt-4">
-        <Link to={`/projects/${id}/interview`} className="btn-secondary px-6 py-3 text-sm flex items-center gap-2">
-          <Clock className="w-4 h-4" />
-          인터뷰 계속 작성
-        </Link>
-        <Link to={`/projects/${id}/preview`} className="btn-primary px-6 py-3 text-sm flex items-center gap-2">
-          <BookOpen className="w-4 h-4" />
-          책 미리보기
-          <ChevronRight className="w-4 h-4" />
-        </Link>
+        {isReadOnly ? (
+          <Link to="/projects/new" className="btn-primary px-6 py-3 text-sm flex items-center gap-2">
+            <BookOpen className="w-4 h-4" />
+            내 프로젝트 시작하기
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        ) : (
+          <>
+            <Link to={`/projects/${id}/interview`} className="btn-secondary px-6 py-3 text-sm flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              인터뷰 계속 작성
+            </Link>
+            <Link to={`/projects/${id}/preview`} className="btn-primary px-6 py-3 text-sm flex items-center gap-2">
+              <BookOpen className="w-4 h-4" />
+              책 미리보기
+              <ChevronRight className="w-4 h-4" />
+            </Link>
+          </>
+        )}
       </div>
     </div>
   )

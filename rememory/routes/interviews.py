@@ -1,4 +1,4 @@
-"""인터뷰 답변/사진 저장 + 책 빌드 API"""
+﻿"""인터뷰 답변/사진 저장 + 책 빌드 API"""
 
 import io
 import logging
@@ -13,6 +13,7 @@ import config
 import models
 from database import get_db
 from routes.projects import get_or_create_user
+from services.qna_merge import has_merged_answer
 
 log = logging.getLogger(__name__)
 
@@ -111,8 +112,8 @@ async def upload_photo(
     if not qna or qna.chapter.project_id != project_id:
         raise HTTPException(status_code=404, detail="QnA를 찾을 수 없습니다.")
 
-    if len(qna.photos) >= 5:
-        raise HTTPException(status_code=400, detail="사진은 최대 5장까지 업로드할 수 있습니다.")
+    if len(qna.photos) >= 1:
+        raise HTTPException(status_code=400, detail="사진은 최대 1장까지 업로드할 수 있습니다.")
 
     data = await file.read()
     if len(data) > 10 * 1024 * 1024:
@@ -245,16 +246,11 @@ def build_book(
     from services.book_builder import build_book as _build
 
     project = _get_owned_project(project_id, request, db)
-    has_answers = (
-        db.query(models.QnA.id)
-        .join(models.Chapter, models.Chapter.id == models.QnA.chapter_id)
-        .filter(
-            models.Chapter.project_id == project_id,
-            models.QnA.skipped == False,
-            models.QnA.answer_text.isnot(None),
-            models.QnA.answer_text != "",
-        )
-        .first()
+    has_answers = any(
+        has_merged_answer(qna)
+        for chapter in project.chapters
+        for qna in chapter.qnas
+        if not qna.skipped
     )
     if not has_answers:
         raise HTTPException(status_code=400, detail="작성된 답변이 없습니다. 인터뷰를 먼저 작성해주세요.")
@@ -297,3 +293,4 @@ router.add_api_route(
     build_book,
     methods=["POST"],
 )
+

@@ -77,6 +77,12 @@ class QnA(Base):
 
     chapter = relationship("Chapter", back_populates="qnas")
     photos = relationship("Photo", back_populates="qna", cascade="all, delete-orphan")
+    contributions = relationship(
+        "Contribution",
+        back_populates="qna",
+        order_by="Contribution.created_at",
+        cascade="all, delete-orphan",
+    )
 
 
 class Photo(Base):
@@ -93,3 +99,16 @@ class Photo(Base):
 
     qna = relationship("QnA", back_populates="photos")
     project = relationship("Project", back_populates="photos")
+
+
+class Contribution(Base):
+    __tablename__ = "contributions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    qna_id = Column(Integer, ForeignKey("qnas.id"), nullable=False, index=True)
+    contributor_name = Column(String, nullable=True)
+    answer_text = Column(Text, nullable=False)
+    time_period = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+
+    qna = relationship("QnA", back_populates="contributions")
