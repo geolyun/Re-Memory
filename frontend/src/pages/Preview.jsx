@@ -4,7 +4,7 @@ import { BookOpen, Edit2, CheckCircle, Loader2, Clock, Settings2, ChevronDown } 
 import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '../lib/api'
 
-const MIN_PAGES = 24
+const MIN_PAGES = 20
 
 function getEmoji(rel) {
   if (rel === '아버지') return '👨'

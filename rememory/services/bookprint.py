@@ -43,16 +43,6 @@ def upload_photo(book_uid: str, file_path: str) -> str:
         raise RuntimeError(f"사진 업로드 응답 파싱 오류: {exc} / 응답: {result}") from exc
 
 
-def _season_title(month: int) -> str:
-    if month in (3, 4, 5):
-        return "spring"
-    if month in (6, 7, 8):
-        return "summer"
-    if month in (9, 10, 11):
-        return "autumn"
-    return "winter"
-
-
 def insert_ganji(
     book_uid: str,
     chapter_num: int,
@@ -138,18 +128,6 @@ def insert_publish(book_uid: str, title: str, author: str, publish_date: str, ph
         break_before="page",
     )
     time.sleep(0.5)
-
-
-def delete_cover(book_uid: str):
-    """Delete existing cover, ignoring only the not-found case."""
-    try:
-        client = get_client()
-        client.covers.delete(book_uid)
-    except ApiError as exc:
-        details = " ".join(str(x) for x in (exc.details or [])) if isinstance(exc.details, list) else str(exc.details or "")
-        if exc.status_code == 404 or "없" in details or "not found" in details.lower():
-            return
-        raise
 
 
 def create_cover(
